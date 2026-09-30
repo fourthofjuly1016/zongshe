@@ -2,32 +2,33 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import java.time.LocalDateTime;
 
-import java.math.BigDecimal;
-
+@Data
 @Entity
 @Table(name = "poi")
-@Data
 public class Poi {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "poi_id")
     private Integer poiId;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Column(name = "poi_name")
+    private String poiName;
 
-    @Column(nullable = false, length = 32)
-    private String type;
+    @Column(name = "poi_type")
+    private String poiType;
 
-    @Column(nullable = false)
-    private String address;
+    @Column(name = "poi_address")
+    private String poiAddress;
 
-    @Column(nullable = false, precision = 10, scale = 7)
-    private BigDecimal latitude;
+    @Column(name = "stay_period")
+    private LocalDateTime stayPeriod;
 
-    @Column(nullable = false, precision = 10, scale = 7)
-    private BigDecimal longitude;
+    @Column(name = "poi_lat")
+    private Double poiLat;
 
-    @Column(nullable = false)
-    private Integer stayTime;
+    @Column(name = "poi_lng")
+    private Double poiLng;
 }

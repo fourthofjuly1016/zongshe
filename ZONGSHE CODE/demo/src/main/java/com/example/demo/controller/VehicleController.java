@@ -1,61 +1,55 @@
 package com.example.demo.controller;
 
-import com.example.demo.common.ApiResponse;
-import com.example.demo.dto.CarRequest;
-import com.example.demo.dto.CarResponse;
-import com.example.demo.dto.VehiclePositionRequest;
-import com.example.demo.dto.VehiclePositionResponse;
-import com.example.demo.dto.VehicleStatusRequest;
-import com.example.demo.service.CarService;
-import com.example.demo.service.VehiclePositionService;
-import com.example.demo.service.VehicleStatusService;
+import com.example.demo.common.Result;
+import com.example.demo.dto.LocationDTO;
+import com.example.demo.dto.VehicleCreateDTO;
+import com.example.demo.entity.Vehicle;
+import com.example.demo.service.VehicleService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
-import org.springframework.http.HttpStatus;
-import org.springframework.validation.annotation.Validated;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/vehicles")
-@Validated
+@RequestMapping("/api/vehicle")
+@RequiredArgsConstructor
 public class VehicleController {
-    private final CarService carService;
-    private final VehiclePositionService positionService;
-    private final VehicleStatusService statusService;
 
-    public VehicleController(CarService carService, VehiclePositionService positionService,
-                             VehicleStatusService statusService) {
-        this.carService = carService;
-        this.positionService = positionService;
-        this.statusService = statusService;
-    }
+    private final VehicleService vehicleService;
 
+    /** 3. 增加车辆 */
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CarResponse> create(@Valid @RequestBody CarRequest request) {
-        return ApiResponse.success("车辆生成成功", carService.create(request));
+    public Result<Vehicle> create(@RequestBody @Valid VehicleCreateDTO dto) {
+        return Result.ok(vehicleService.create(dto));
     }
 
-    @PatchMapping("/{id}/invalidate")
-    public ApiResponse<Void> invalidate(@PathVariable @Positive Integer id) {
-        carService.delete(id);
-        return ApiResponse.success("车辆已失效");
+    /** 4. 失效车辆 */
+    @PutMapping("/{id}/invalidate")
+    public Result<Void> invalidate(@PathVariable Integer id) {
+        vehicleService.invalidate(id);
+        return Result.ok();
     }
 
-    @PostMapping("/{id}/position")
-    public ApiResponse<VehiclePositionResponse> updatePosition(@PathVariable @Positive Integer id,
-                                                                @Valid @RequestBody VehiclePositionRequest request) {
-        return ApiResponse.success("车辆位置已更新", positionService.update(id, request));
+    /** 6. 更新车辆位置 */
+    @PutMapping("/{id}/location")
+    public Result<Void> updateLocation(@PathVariable Integer id,
+                                       @RequestBody @Valid LocationDTO dto) {
+        vehicleService.updateLocation(id, dto);
+        return Result.ok();
     }
 
-    @GetMapping("/{id}/position/latest")
-    public ApiResponse<VehiclePositionResponse> latestPosition(@PathVariable @Positive Integer id) {
-        return ApiResponse.success("查询车辆最新位置成功", positionService.latest(id));
+    /** 7. 更新车辆状态 */
+    @PutMapping("/{id}/status")
+    public Result<Void> updateStatus(@PathVariable Integer id,
+                                     @RequestParam String status) {
+        vehicleService.updateStatus(id, status);
+        return Result.ok();
     }
 
-    @PatchMapping("/{id}/status")
-    public ApiResponse<CarResponse> updateStatus(@PathVariable @Positive Integer id,
-                                                  @Valid @RequestBody VehicleStatusRequest request) {
-        return ApiResponse.success("车辆状态已更新", statusService.update(id, request));
+    /** 查询所有车辆 */
+    @GetMapping("/list")
+    public Result<List<Vehicle>> list() {
+        return Result.ok(vehicleService.list());
     }
 }
