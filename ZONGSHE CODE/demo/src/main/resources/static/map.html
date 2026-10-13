@@ -90,27 +90,40 @@ function loadVehicles() {
     .catch(err => console.error('车辆请求失败:', err));
 }
 
-// 拉点位（只拉一次）
+// 拉点位，用海量点方式绘制（性能好）
 fetch('/api/poi/list')
   .then(res => res.json())
   .then(result => {
     if (result.code !== 0) return;
+
+    // 构造海量点数据
+    var massData = [];
     result.data.forEach(p => {
       if (p.poiLat && p.poiLng) {
-        var m = new AMap.Text({
-          text: p.poiName,
-          position: [p.poiLng, p.poiLat],
-          map: map,
-          style: {
-            'background-color': '#4CAF50',
-            'color': 'white',
-            'padding': '6px 10px',
-            'border-radius': '4px',
-            'font-size': '13px'
-          }
+        massData.push({
+          lnglat: [p.poiLng, p.poiLat],
+          name: p.poiName
         });
-        markers.push(m);
       }
+    });
+
+    // 用海量点 API 一次性绘制所有 POI
+    var massMarks = new AMap.MassMarks(massData, {
+      opacity: 0.8,
+      zIndex: 111,
+      cursor: 'pointer',
+      style: {
+        url: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_b.png',
+        anchor: new AMap.Pixel(6, 6),
+        size: new AMap.Size(19, 31)
+      }
+    });
+
+    massMarks.setMap(map);
+
+    // 点击海量点时弹出名称
+    massMarks.on('click', function(e) {
+      alert(e.data.name);
     });
   })
   .catch(err => console.error('点位请求失败:', err));
