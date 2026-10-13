@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+  var vehicleMarkers = [];   // 用来存所有车辆标记
 <html>
   <head>
     <meta charset="utf-8" />
@@ -27,42 +28,45 @@
 
     <!-- ★ 初始化地图 -->
 <script>
-  // 创建地图实例
-  var map = new AMap.Map("container", {
-    zoom: 15,
-    center: [104.065735, 30.659462]
-  });
+  // 创建地图
+var map = new AMap.Map("container", {
+  zoom: 15,
+  center: [104.065735, 30.659462]
+});
 
-  // 收集所有标记
-  var markers = [];
+// 用于存放所有标记
+var markers = [];
+var vehicleMarkers = [];   // 只存车辆的，方便定时刷新
 
-  // 加"成都"标记
-  var chengduMarker = new AMap.Text({
-    text: '成都',
-    position: [104.065735, 30.659462],
-    map: map,
-    style: {
-      'background-color': 'red',
-      'color': 'white',
-      'padding': '8px 12px',
-      'border-radius': '4px',
-      'font-size': '14px'
-    }
-  });
-  markers.push(chengduMarker);   // ★ 把成都也加进数组
+// "成都"红标记
+var chengduMarker = new AMap.Text({
+  text: '成都',
+  position: [104.065735, 30.659462],
+  map: map,
+  style: {
+    'background-color': 'red',
+    'color': 'white',
+    'padding': '8px 12px',
+    'border-radius': '4px',
+    'font-size': '14px'
+  }
+});
+markers.push(chengduMarker);
 
-  // 从后端拉车辆
+// 拉车辆的函数
+function loadVehicles() {
   fetch('/api/vehicle/list')
     .then(res => res.json())
     .then(result => {
-      if (result.code !== 0) {
-        console.error('接口错误:', result.msg);
-        return;
-      }
+      if (result.code !== 0) return;
+
+      // 清掉旧的车辆标记
+      vehicleMarkers.forEach(m => m.setMap(null));
+      vehicleMarkers = [];
 
       result.data.forEach(v => {
         if (v.currentLat && v.currentLng) {
-          var marker = new AMap.Text({
+          var m = new AMap.Text({
             text: '车' + v.vehicleId,
             position: [v.currentLng, v.currentLat],
             map: map,
@@ -74,15 +78,47 @@
               'font-size': '13px'
             }
           });
-          markers.push(marker);   // ★ 车辆也加进数组
+          vehicleMarkers.push(m);
         }
       });
 
-      // ★ 让地图自动显示所有标记
-      if (markers.length > 0) {
-        map.setFitView(markers);
+      // 自动适配视野
+      if (markers.length + vehicleMarkers.length > 0) {
+        map.setFitView(markers.concat(vehicleMarkers));
       }
     })
-    .catch(err => console.error('请求失败:', err));
+    .catch(err => console.error('车辆请求失败:', err));
+}
+
+// 拉点位（只拉一次）
+fetch('/api/poi/list')
+  .then(res => res.json())
+  .then(result => {
+    if (result.code !== 0) return;
+    result.data.forEach(p => {
+      if (p.poiLat && p.poiLng) {
+        var m = new AMap.Text({
+          text: p.poiName,
+          position: [p.poiLng, p.poiLat],
+          map: map,
+          style: {
+            'background-color': '#4CAF50',
+            'color': 'white',
+            'padding': '6px 10px',
+            'border-radius': '4px',
+            'font-size': '13px'
+          }
+        });
+        markers.push(m);
+      }
+    });
+  })
+  .catch(err => console.error('点位请求失败:', err));
+
+// 首次加载车辆
+loadVehicles();
+
+// 每 3 秒刷新车辆位置
+setInterval(loadVehicles, 3000);
 </script>  </body>
 </html>
