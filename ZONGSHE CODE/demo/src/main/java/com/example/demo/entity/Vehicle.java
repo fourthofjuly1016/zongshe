@@ -33,4 +33,13 @@ public class Vehicle {
 
     @Column(name = "route_id")
     private Integer routeId;
+
+    @Column(name = "current_phase_elapsed")
+    private Integer currentPhaseElapsed = 0;
+
+    @Column(name = "target_lat")
+    private Double targetLat;
+
+    @Column(name = "target_lng")
+    private Double targetLng;
 }

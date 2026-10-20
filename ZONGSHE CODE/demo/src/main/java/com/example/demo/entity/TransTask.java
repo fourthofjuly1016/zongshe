@@ -31,4 +31,7 @@ public class TransTask {
 
     @Column(name = "task_status")
     private String taskStatus;
+
+    @Column(name = "total_phase_time")
+    private Integer totalPhaseTime = 0;
 }
