@@ -10,6 +10,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import com.example.demo.entity.Need;
+import com.example.demo.repository.NeedRepository;
+
+
 
 @Component
 @EnableScheduling
@@ -27,11 +31,29 @@ public class SimulationEngine {
         List<Vehicle> vehicles = vehicleRepository.findAll();
         
         for (Vehicle vehicle : vehicles) {
-            // 1. 如果是空闲状态，尝试派单（此处简化，假设已经从数据库拿到了状态）
-            if ("IDLE".equals(vehicle.getVehicleStatus())) {
-                // TODO: 匹配逻辑（省略），如果有任务，把状态改为 TO_PICKUP
-                continue; 
+       // 1. 如果是空闲状态，尝试自动派单
+           if ("IDLE".equals(vehicle.getVehicleStatus())) {
+    // 查一下数据库里有没有等待运输的需求
+            List<Need> validNeeds = needRepository.findByNeedStatus("VALID");
+              if (!validNeeds.isEmpty()) {
+            Need taskNeed = validNeeds.get(0);
+             // 锁定这个需求，防止被别的车抢走
+            taskNeed.setNeedStatus("ASSIGNED");
+            needRepository.save(taskNeed);
+
+             // 把车辆状态改为接单行驶
+            vehicle.setVehicleStatus(VehicleState.TO_PICKUP.name());
+            vehicle.setCurrentPhaseElapsed(0);
+        
+             // 模拟设置一个目标点（这里给个随机偏移坐标，实际中应取需求的起运地坐标）
+            vehicle.setTargetLat(vehicle.getCurrentLat() + (Math.random() - 0.5) * 0.05);
+            vehicle.setTargetLng(vehicle.getCurrentLng() + (Math.random() - 0.5) * 0.05);
+        
+            System.out.println(">>> 车辆 " + vehicle.getVehicleId() + " 自动接单成功！进入 TO_PICKUP 状态");
+            vehicleRepository.save(vehicle);
             }
+            continue; 
+        }
 
             // 2. 状态推进逻辑
             VehicleState currentState;
@@ -54,22 +76,27 @@ public class SimulationEngine {
                     moveVehicle(vehicle);
                 }
                 vehicleRepository.save(vehicle);
-            } else {
-                // 【阶段已完成】：触发马尔科夫转换
-                VehicleState nextState = MarkovChain.chooseNextState(currentState);
-                
-                // 业务校验：如果是运货行驶，必须转卸货（按文档要求）
-                // TODO: 这里可以加硬性约束，比如 nextState == TRANSPORTING 但没有货物，强制变 UNLOADING
-                
-                vehicle.setVehicleStatus(nextState.name());
-                vehicle.setCurrentPhaseElapsed(0); // 新阶段耗时清零
-                
-                // 初始化新阶段的时间
-                vehicle.setCurrentPhaseElapsed(0);
-                // (此处省略：设置新阶段的目标位置、总耗时等，根据 nextState 来)
-                
-                vehicleRepository.save(vehicle);
-            }
+           } else {
+           // 【阶段已完成】：触发马尔科夫转换
+           VehicleState nextState = MarkovChain.chooseNextState(currentState);
+    
+           System.out.println(">>> 车辆 " + vehicle.getVehicleId() + " 状态转换：" + currentState + " -> " + nextState);
+    
+           vehicle.setVehicleStatus(nextState.name());
+           vehicle.setCurrentPhaseElapsed(0);
+
+           // ================= 新增的业务调用 =================
+           if (nextState == VehicleState.TO_PICKUP || nextState == VehicleState.LOADING) {
+           // 如果准备去装货或接单，去执行找货逻辑
+            selectGoods(vehicle);
+            } else if (nextState == VehicleState.WAITING || nextState == VehicleState.IDLE) {
+             // 如果进入等待或空闲，调用找新需求逻辑
+             WaitAndSearchNewNeed(vehicle);
+         }
+          // =================================================
+    
+             vehicleRepository.save(vehicle);
+}
         }
     }
 
@@ -104,4 +131,39 @@ public class SimulationEngine {
         vehicle.setCurrentLat(newLat);
         vehicle.setCurrentLng(newLng);
     }
+
+
+    private final NeedRepository needRepository;
+
+
+    /**
+ * 提示1：选货逻辑。当车辆状态变为接单或装货时，给它分配一个具体需求
+ */
+    private void selectGoods(Vehicle vehicle) {
+      System.out.println(">>> 车辆 " + vehicle.getVehicleId() + " 调用 selectGoods() 寻找货源...");
+    
+    // 简单实现：从数据库随机找一个有效需求（或者暂时假装给它派了一单）
+    // 在完整版本中，这里应该结合你之前写的 MatchingService 匹配算法
+    List<Need> validNeeds = needRepository.findByNeedStatus("VALID");
+    
+    if (!validNeeds.isEmpty()) {
+        Need targetNeed = validNeeds.get(0); // 简单取第一个
+        System.out.println(">>> 成功绑定需求: " + targetNeed.getCargoName());
+        // 这里可以给 vehicle 设置目标的经纬度（起运地），这里暂时省略具体坐标映射
+    } else {
+        System.out.println(">>> 没找到货物，车辆进入空闲状态");
+        vehicle.setVehicleStatus(VehicleState.IDLE.name());
+    }
+}
+
+/**
+ * 提示2：等待并寻找新需求。
+ */
+    private void WaitAndSearchNewNeed(Vehicle vehicle) {
+      System.out.println(">>> 车辆 " + vehicle.getVehicleId() + " 调用 WaitAndSearchNewNeed() 等待/找新单...");
+    
+    // 简单实现：给它置为 IDLE，下个 tick 会重新走调度流程
+       vehicle.setVehicleStatus(VehicleState.IDLE.name());
+       vehicle.setCurrentPhaseElapsed(0);
+}
 }
