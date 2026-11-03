@@ -21,4 +21,5 @@ public class Need {
 
     @Column(name = "need_status")
     private String needStatus;
+    private Double remainingQuantity;
 }

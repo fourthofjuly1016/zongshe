@@ -18,4 +18,10 @@ public class Factory {
 
     @Column(name = "factory_address")
     private String factoryAddress;
+
+    @Column(name = "factory_lat")
+private Double factoryLat;
+
+@Column(name = "factory_lng")
+private Double factoryLng;
 }

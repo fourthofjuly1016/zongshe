@@ -23,7 +23,7 @@
     <div id="container"></div>
 
     <!-- 引入高德地图 JS API，记得保留你的 key -->
-    <script src="https://webapi.amap.com/maps?v=2.0&key=c28ce138979ab3ea24a8427833ba6a0c"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=c28ce138979ab3ea24a8427833ba6a0c&plugin=AMap.MoveAnimation"></script>
 
     <script>
       // 1. 初始化地图
@@ -125,6 +125,48 @@
       loadVehicles();
       setInterval(loadVehicles, 3000);
 
+
+      // 6. 加载工厂位置（用红色大图标标记）
+fetch('/api/factory/list')
+  .then(res => res.json())
+  .then(result => {
+    if (result.code !== 0) return;
+    result.data.forEach(f => {
+      if (f.factoryLat && f.factoryLng) {
+        new AMap.Marker({
+          position: [f.factoryLng, f.factoryLat],
+          map: map,
+          title: f.factoryName,
+          // 用一个红色的图标区分工厂
+          icon: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png', 
+          offset: new AMap.Pixel(-10, -30)
+        });
+      }
+    });
+  });
+
+
+  // 7. 加载工厂位置（用红色大图标标记）
+fetch('/api/factory/list')
+  .then(res => res.json())
+  .then(result => {
+    if (result.code !== 0) return;
+    result.data.forEach(f => {
+      if (f.factoryLat && f.factoryLng) {
+        new AMap.Marker({
+          position: [f.factoryLng, f.factoryLat],
+          map: map,
+          title: f.factoryName,
+          // 用高德自带的红色图标代表工厂
+          icon: 'https://webapi.amap.com/theme/v1.3/markers/n/mark_r.png', 
+          offset: new AMap.Pixel(-10, -30)
+        });
+      }
+    });
+  })
+  .catch(err => console.error('工厂请求失败:', err));
+
+  
     </script>
   </body>
 </html>
