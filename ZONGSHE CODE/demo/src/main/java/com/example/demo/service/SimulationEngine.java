@@ -22,7 +22,7 @@ public class SimulationEngine {
 
     private final VehicleRepository vehicleRepository;
 
-    // 现实1s = 仿真1min？文档说5s代表5min
+    // 现实1s = 仿真1min
     private static final int TICK_SIMULATION_MINUTES = 5; 
     private static final double SPEED_KM_PER_MINUTE = 1.0; // 60km/h 即 1km/min
 
@@ -76,13 +76,31 @@ public class SimulationEngine {
                     moveVehicle(vehicle);
                 }
                 vehicleRepository.save(vehicle);
-           } else {
-           // 【阶段已完成】：触发马尔科夫转换
-           VehicleState nextState = MarkovChain.chooseNextState(currentState);
+          } else {
+    // 【阶段已完成】：触发马尔科夫转换
+    VehicleState nextState = MarkovChain.chooseNextState(currentState);
     
-           System.out.println(">>> 车辆 " + vehicle.getVehicleId() + " 状态转换：" + currentState + " -> " + nextState);
+    // ================= 新增：需求状态同步更新 =================
+    // 如果车辆完成了卸货，并且下一个状态是空闲（或者等待）
+    if (currentState == VehicleState.UNLOADING) {
+        // 找到这辆车最近绑定的、处于 ASSIGNED 状态的需求
+        List<Need> assignedNeeds = needRepository.findByNeedStatus("ASSIGNED");
+        if (!assignedNeeds.isEmpty()) {
+            Need finishedNeed = assignedNeeds.get(0);
+            finishedNeed.setNeedStatus("ARRIVED"); // 标记为已运抵
+            needRepository.save(finishedNeed);
+            System.out.println(">>> 需求 " + finishedNeed.getNeedId() + " 已成功运抵！");
+        }
+    }
+    // =========================================================
     
-           vehicle.setVehicleStatus(nextState.name());
+    System.out.println(">>> 车辆 " + vehicle.getVehicleId() + " 状态转换：" + currentState + " -> " + nextState);
+    vehicle.setVehicleStatus(nextState.name());
+    vehicle.setCurrentPhaseElapsed(0);
+    
+
+    vehicle.setCurrentPhaseElapsed(0);
+    
            vehicle.setCurrentPhaseElapsed(0);
 
            // ================= 新增的业务调用 =================
